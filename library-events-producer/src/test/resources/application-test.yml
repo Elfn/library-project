@@ -1,0 +1,19 @@
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    consumer:
+      group-id: test-group
+      bootstrap-servers: ${spring.embedded.kafka.brokers}
+    producer:
+      retries: 0
+      bootstrap-servers: ${spring.embedded.kafka.brokers}
+    admin:
+      properties:
+        bootstrap.servers: ${spring.kafka.admin.properties.bootstrap-servers}
+    embedded:
+      kafka:
+        brokers: ${spring.kafka.bootstrap-servers}
+        topics:
+            name: "library-events"
+            partitions: 3
+            replicas: 1

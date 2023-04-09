@@ -45,9 +45,9 @@ public class LibraryController {
     // producerSend.sendLibraryEventAsynchronousWay(libraryEvent);
 
     // Send sync
-    SendResult<Integer, String> sendResult = producerSend.sendLibraryEventSynchronousWay(libraryEvent);
-
-    log.info("Result is : {}", sendResult);
+   producerSend.sendLibraryEventAsynchronousWay(libraryEvent);
+//    SendResult<Integer, String> sendResult = producerSend.sendLibraryEventSynchronousWay(libraryEvent);
+//    log.info("Result is : {}", sendResult);
     log.info("After sent");
 
 
