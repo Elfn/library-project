@@ -17,3 +17,6 @@ spring:
             name: "library-events"
             partitions: 3
             replicas: 1
+cluster:
+  topics:
+    - library-events

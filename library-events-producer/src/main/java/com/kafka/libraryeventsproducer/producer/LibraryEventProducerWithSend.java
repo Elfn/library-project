@@ -28,7 +28,6 @@ import java.util.concurrent.TimeoutException;
 @RequiredArgsConstructor
 public class LibraryEventProducerWithSend {
 
-
      private final KafkaTemplate<Integer, String> kafkaTemplate;
      private final ObjectMapper objectMapper;
      private final ConfigProperties configProperties;
@@ -54,6 +53,25 @@ public class LibraryEventProducerWithSend {
        });
      }
 
+  public CompletableFuture<SendResult<Integer,String>> sendLibraryEventAsynchronousWayReturnCompletableFuture(LibraryEvent libraryEvent) throws JsonProcessingException {
+
+    Integer key = libraryEvent.getLibraryEventId();
+    String value = objectMapper.writeValueAsString(libraryEvent);
+
+    ProducerRecord<Integer, String> producerRecord = buildProducerRecord(key, value, "library-events");
+
+    CompletableFuture<SendResult<Integer,String>> completableFuture = kafkaTemplate.send(producerRecord);
+    completableFuture.whenComplete((result, exception) -> {
+      if (exception == null) {
+        // Votre code de traitement en cas de succès
+        handleSuccess(key,value,result);
+      } else {
+        // Votre code de traitement en cas d'échec
+        handleFailure(key, value, exception);
+      }
+    });
+    return completableFuture;
+  }
 
 
   // Send record synchronously

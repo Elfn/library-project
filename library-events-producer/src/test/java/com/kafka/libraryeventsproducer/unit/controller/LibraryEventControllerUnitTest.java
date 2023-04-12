@@ -15,6 +15,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.concurrent.CompletableFuture;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doNothing;
@@ -50,7 +52,7 @@ public class LibraryEventControllerUnitTest {
     LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(null).book(book).build();
     LibraryEventRequest request = LibraryEventRequest.builder().libraryEventType(libraryEvent.getLibraryEventType()).book(libraryEvent.getBook()).build();
     String json = objectMapper.writeValueAsString(request);
-    doNothing().when(producer).sendLibraryEventAsynchronousWay(isA(LibraryEvent.class));
+    when(producer.sendLibraryEventAsynchronousWayReturnCompletableFuture(isA(LibraryEvent.class))).thenReturn(null);
     when(service.postLibraryEvent(request)).thenReturn(libraryEvent);
 
     //When
@@ -64,15 +66,15 @@ public class LibraryEventControllerUnitTest {
 
   @Test
   void postLibraryEvent_4xx() throws Exception {
-    //Given
+    // Given
     Book book = Book.builder().bookId(null).bookAuthor(null).bookName(null).build();
     LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(null).book(book).build();
     LibraryEventRequest request = LibraryEventRequest.builder().libraryEventType(libraryEvent.getLibraryEventType()).book(libraryEvent.getBook()).build();
     String json = objectMapper.writeValueAsString(request);
-    doNothing().when(producer).sendLibraryEventAsynchronousWay(isA(LibraryEvent.class));
+    when(producer.sendLibraryEventAsynchronousWayReturnCompletableFuture(isA(LibraryEvent.class))).thenReturn(null);
     when(service.postLibraryEvent(request)).thenReturn(libraryEvent);
 
-    //Expected
+    // Expected
     String expectedErrorMessage = "book.bookAuthor - must not be blank, book.bookId - must not be null, book.bookName - must not be blank";
     mockMvc.perform(post("/v1/libraryevent")
         .content(json)
