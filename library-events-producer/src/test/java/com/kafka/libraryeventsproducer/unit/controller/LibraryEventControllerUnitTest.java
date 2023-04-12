@@ -1,13 +1,10 @@
 package com.kafka.libraryeventsproducer.unit.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kafka.libraryeventsproducer.controller.LibraryController;
+import com.kafka.libraryeventsproducer.controller.LibraryEventController;
 import com.kafka.libraryeventsproducer.domain.Book;
 import com.kafka.libraryeventsproducer.domain.LibraryEvent;
-import com.kafka.libraryeventsproducer.domain.LibraryEventType;
 import com.kafka.libraryeventsproducer.dto.LibraryEventRequest;
-import com.kafka.libraryeventsproducer.dto.LibraryEventResponse;
 import com.kafka.libraryeventsproducer.producer.LibraryEventProducerWithSend;
 import com.kafka.libraryeventsproducer.service.LibraryEventService;
 import org.junit.jupiter.api.Test;
@@ -15,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,13 +20,14 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * @PROJECT library-events-producer
  * @Author Elimane on 09/04/2023
  */
-@WebMvcTest(LibraryController.class)
+@WebMvcTest(LibraryEventController.class)
 @AutoConfigureMockMvc
 public class LibraryEventControllerUnitTest {
 
@@ -50,10 +47,11 @@ public class LibraryEventControllerUnitTest {
   void postLibraryEvent() throws Exception {
     //Given
     Book book = Book.builder().bookId(123).bookAuthor("Dilip").bookName("Kafka Using Spring Boot").build();
-    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(null).libraryEventType(LibraryEventType.NEW).book(book).build();
-    String json = objectMapper.writeValueAsString(libraryEvent);
+    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(null).book(book).build();
+    LibraryEventRequest request = LibraryEventRequest.builder().libraryEventType(libraryEvent.getLibraryEventType()).book(libraryEvent.getBook()).build();
+    String json = objectMapper.writeValueAsString(request);
     doNothing().when(producer).sendLibraryEventAsynchronousWay(isA(LibraryEvent.class));
-    when(service.postLibraryEvent(any())).thenReturn(libraryEvent);
+    when(service.postLibraryEvent(request)).thenReturn(libraryEvent);
 
     //When
     mockMvc.perform(post("/v1/libraryevent")
@@ -63,4 +61,25 @@ public class LibraryEventControllerUnitTest {
 
     //Then
   }
+
+  @Test
+  void postLibraryEvent_4xx() throws Exception {
+    //Given
+    Book book = Book.builder().bookId(null).bookAuthor(null).bookName(null).build();
+    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(null).book(book).build();
+    LibraryEventRequest request = LibraryEventRequest.builder().libraryEventType(libraryEvent.getLibraryEventType()).book(libraryEvent.getBook()).build();
+    String json = objectMapper.writeValueAsString(request);
+    doNothing().when(producer).sendLibraryEventAsynchronousWay(isA(LibraryEvent.class));
+    when(service.postLibraryEvent(request)).thenReturn(libraryEvent);
+
+    //Expected
+    String expectedErrorMessage = "book.bookAuthor - must not be blank, book.bookId - must not be null, book.bookName - must not be blank";
+    mockMvc.perform(post("/v1/libraryevent")
+        .content(json)
+        .contentType(MediaType.APPLICATION_JSON))
+      .andExpect(status().is4xxClientError())
+      .andExpect(content().string(expectedErrorMessage)); // Expect all "book" fields to null
+
+  }
+
 }

@@ -5,13 +5,12 @@ import com.kafka.libraryeventsproducer.domain.LibraryEvent;
 import com.kafka.libraryeventsproducer.dto.LibraryEventRequest;
 import com.kafka.libraryeventsproducer.dto.LibraryEventResponse;
 import com.kafka.libraryeventsproducer.producer.LibraryEventProducerWithSend;
-import com.kafka.libraryeventsproducer.producer.LibraryEventProducerWithSendDefault;
 import com.kafka.libraryeventsproducer.service.LibraryEventService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,14 +25,14 @@ import java.util.concurrent.TimeoutException;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-public class LibraryController {
+public class LibraryEventController {
 
   //private final LibraryEventProducerWithSendDefault producerSendDefault;
   private final LibraryEventProducerWithSend producerSend;
   private final LibraryEventService service;
 
   @PostMapping("/v1/libraryevent")
-  public ResponseEntity<LibraryEventResponse>  postLibraryEvent(@RequestBody LibraryEventRequest libraryEventRequest) throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
+  public ResponseEntity<LibraryEventResponse>  postLibraryEvent(@RequestBody @Valid LibraryEventRequest libraryEventRequest) throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
 
     LibraryEvent libraryEvent = service.postLibraryEvent(libraryEventRequest);
     LibraryEventResponse response = getLibraryEventResponse(libraryEvent);
