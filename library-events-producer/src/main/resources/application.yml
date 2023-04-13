@@ -1,7 +1,6 @@
 spring:
   profiles:
     active: local
-
 ---
 spring:
   config:
@@ -14,13 +13,14 @@ spring:
       bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
       key-serializer: org.apache.kafka.common.serialization.IntegerSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        acks: all
+        retries: 10
     admin:
       properties:
         bootstrap.servers: localhost:9092,localhost:9093,localhost:9094
 cluster:
-  topics:
-    - library-events
-
+  topics: library-events
 ---
 spring:
   config:
@@ -31,7 +31,6 @@ spring:
       bootstrap-servers: dev:9092
       key-serializer: org.apache.kafka.common.serialization.IntegerSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-
 ---
 spring:
   config:
@@ -49,7 +48,7 @@ spring:
         bootstrap.servers: localhost:9092,localhost:9093,localhost:9094
 cluster:
   topics:
-    - library-events
+   - library-events
 
 ---
 spring:
