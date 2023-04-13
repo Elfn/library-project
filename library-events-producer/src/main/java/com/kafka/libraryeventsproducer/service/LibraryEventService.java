@@ -10,4 +10,5 @@ import com.kafka.libraryeventsproducer.dto.LibraryEventResponse;
  */
 public interface LibraryEventService {
   public LibraryEvent postLibraryEvent(LibraryEventRequest request);
+  public LibraryEvent putLibraryEvent(LibraryEventRequest request);
 }

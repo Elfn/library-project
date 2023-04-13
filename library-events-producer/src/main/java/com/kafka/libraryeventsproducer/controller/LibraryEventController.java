@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -55,9 +56,30 @@ public class LibraryEventController {
 
   }
 
+  @PutMapping("/v1/libraryevent")
+  public ResponseEntity<?>  putLibraryEvent(@RequestBody @Valid LibraryEventRequest libraryEventRequest) throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
+
+
+    LibraryEvent libraryEvent = service.putLibraryEvent(libraryEventRequest);
+
+    if(libraryEvent.getLibraryEventId() == null){
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Please pass the LibraryEventId");
+    }
+    LibraryEventResponse response = getLibraryEventResponse(libraryEvent);
+    // Invoke Kafka producer
+    log.info("Before send");
+    // Send sync
+    producerSend.sendLibraryEventAsynchronousWay(libraryEvent);
+    log.info("After sent");
+
+    return  ResponseEntity.status(HttpStatus.OK).body(response);
+
+  }
+
+
   private LibraryEventResponse getLibraryEventResponse(LibraryEvent libraryEvent) {
     return LibraryEventResponse.builder()
-      .libraryEventId(libraryEvent.getLibraryEventId())
+     // .libraryEventId(libraryEvent.getLibraryEventId())
       .libraryEventType(libraryEvent.getLibraryEventType())
       .book(libraryEvent.getBook())
       .build();

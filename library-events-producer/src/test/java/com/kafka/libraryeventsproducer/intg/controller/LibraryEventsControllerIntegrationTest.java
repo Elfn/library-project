@@ -4,6 +4,7 @@ import com.kafka.libraryeventsproducer.domain.Book;
 import com.kafka.libraryeventsproducer.domain.LibraryEvent;
 import com.kafka.libraryeventsproducer.domain.LibraryEventType;
 import com.kafka.libraryeventsproducer.dto.LibraryEventResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
@@ -39,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *3- En définissant la valeur à "RANDOM_PORT", Spring Boot démarre un serveur sur un port aléatoire afin d'éviter les conflits de ports lors des tests.
  *
  * */
-
+@Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EmbeddedKafka(topics = {"library-events"}, partitions = 3)
 @TestPropertySource(properties = {"spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}","spring.kafka.admin.properties.bootstrap-servers=${spring.embedded.kafka.brokers}"})
@@ -87,6 +88,33 @@ public class LibraryEventsControllerIntegrationTest {
     String expectedRecord = "{\"libraryEventId\":null,\"libraryEventType\":\"NEW\",\"book\":{\"bookId\":123,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
     String value = consumerRecord.value();
     assertEquals(expectedRecord,value);
+  }
+
+  @Test
+  @Timeout(5)
+  void putLibraryEvent(){
+
+    //Given
+    Book book = Book.builder().bookId(123).bookAuthor("Dilip").bookName("Kafka Using Spring Boot").build();
+    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(999).libraryEventType(LibraryEventType.UPDATE).book(book).build();
+    LibraryEvent libraryEventNull = LibraryEvent.builder().libraryEventId(null).libraryEventType(LibraryEventType.NEW).book(book).build();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("Content-Type", MediaType.APPLICATION_JSON.toString());
+    HttpEntity<LibraryEvent> request = new HttpEntity<>(libraryEvent, headers);
+
+    //When
+    ResponseEntity<LibraryEventResponse> response = restTemplate.exchange("/v1/libraryevent", HttpMethod.PUT, request, LibraryEventResponse.class);
+
+    //Then
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+
+    ConsumerRecord<Integer,String> consumerRecord = KafkaTestUtils.getSingleRecord(consumer, "library-events");
+    // Thread.sleep(5); // Wait for getSingleRecord method
+    String expectedRecord = "{\"libraryEventId\":999,\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":123,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+    String value = consumerRecord.value();
+    assertEquals(expectedRecord,value);
+    log.info("Record successfully sent: {}", consumerRecord.value());
+
   }
 
 }

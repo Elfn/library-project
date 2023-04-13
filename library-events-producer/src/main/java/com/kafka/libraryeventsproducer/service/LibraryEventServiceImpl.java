@@ -17,7 +17,14 @@ public class LibraryEventServiceImpl implements LibraryEventService {
   @Override
   public LibraryEvent postLibraryEvent(LibraryEventRequest request) {
     request.setLibraryEventType(LibraryEventType.NEW);
-    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventType(request.getLibraryEventType()).book(request.getBook()).build();
+    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(request.getLibraryEventId()).libraryEventType(request.getLibraryEventType()).book(request.getBook()).build();
+    return libraryEvent;
+  }
+
+  @Override
+  public LibraryEvent putLibraryEvent(LibraryEventRequest request) {
+    request.setLibraryEventType(LibraryEventType.UPDATE);
+    LibraryEvent libraryEvent = LibraryEvent.builder().libraryEventId(request.getLibraryEventId()).libraryEventType(request.getLibraryEventType()).book(request.getBook()).build();
     return libraryEvent;
   }
 }
