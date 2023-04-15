@@ -37,7 +37,7 @@ public class LibraryEventProducerWithSend {
 
             Integer key = libraryEvent.getLibraryEventId();
             String value = objectMapper.writeValueAsString(libraryEvent);
-            String topic = configProperties.getTopics().get(0);
+            String topic = configProperties.getLibraryEvents();
 
        ProducerRecord<Integer, String> producerRecord = buildProducerRecord(key, value, topic);
 
@@ -78,7 +78,7 @@ public class LibraryEventProducerWithSend {
   public SendResult<Integer, String> sendLibraryEventSynchronousWay(LibraryEvent libraryEvent) throws JsonProcessingException, ExecutionException, InterruptedException, TimeoutException {
     Integer key = libraryEvent.getLibraryEventId();
     String value = objectMapper.writeValueAsString(libraryEvent);
-    String topic = configProperties.getTopics().get(0);
+    String topic = configProperties.getLibraryEvents();
     SendResult<Integer, String> sendResult = null;
     ProducerRecord<Integer, String> producerRecord = buildProducerRecord(key, value, topic);
 

@@ -20,7 +20,8 @@ spring:
       properties:
         bootstrap.servers: localhost:9092,localhost:9093,localhost:9094
 cluster:
-  topics: library-events
+  topics:
+    library-events: library-events
 ---
 spring:
   config:
