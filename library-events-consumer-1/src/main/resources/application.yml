@@ -6,9 +6,7 @@ server:
 
 ---
 spring:
-  config:
-    activate:
-      on-profile: local
+  profiles: local
   kafka:
     consumer:
       bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
@@ -27,16 +25,12 @@ spring:
   h2:
     console:
       enabled: true
-cluster:
-  topics:
-    library-events: library-events
+
 
 ---
 
 spring:
-  config:
-    activate:
-      on-profile: non-prod
+  profiles: nonprod
   kafka:
     consumer:
       bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
@@ -47,15 +41,12 @@ spring:
 ---
 
 spring:
-  config:
-    activate:
-      on-profile: prod
+  profiles: prod
   kafka:
     consumer:
       bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
       key-deserializer: org.apache.kafka.common.serialization.IntegerDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: library-events-listener-group
-
 
 
