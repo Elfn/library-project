@@ -13,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlGroup;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,8 +35,6 @@ public class LibraryEventsServiceIntegrationTest {
   @Autowired
   private Gson gson;
 
-//  @Autowired
-//  private MockMvc mockMvc;
 
   @Test
   @SqlGroup({
