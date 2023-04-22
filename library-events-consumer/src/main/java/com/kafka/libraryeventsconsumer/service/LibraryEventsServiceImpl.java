@@ -47,18 +47,19 @@ public class LibraryEventsServiceImpl implements LibraryEventsService{
   private void save(LibraryEventEntity libraryEvent) {
     libraryEvent.getBook().setLibraryEvent(libraryEvent);
     repository.save(libraryEvent);
-    log.info("Successfully persisted: {}", libraryEvent);
+    log.info("Successfully persisted the libraryEvent (Id:{}, Type:{})", libraryEvent.getLibraryEventId(), libraryEvent.getLibraryEventType());
   }
 
   private void validate(LibraryEventEntity libraryEvent) {
-   if(libraryEvent.getLibraryEventId() == null){
-     throw new IllegalArgumentException("Library event Id is missing");
-   }
-   Optional<LibraryEventEntity> optionalLibraryEvent =  repository.findById(libraryEvent.getLibraryEventId());
-   if(!optionalLibraryEvent.isPresent()){
-     throw new IllegalArgumentException("Library event not valid");
-   }
-   log.info("Validation is successfull for the library event : {} ", optionalLibraryEvent.get());
+     if(libraryEvent.getLibraryEventId() == null){
+       throw new IllegalArgumentException("Library event Id is missing");
+     }
+     Optional<LibraryEventEntity> optionalLibraryEvent =  repository.findById(libraryEvent.getLibraryEventId());
+     if(!optionalLibraryEvent.isPresent()){
+       throw new IllegalArgumentException("Library event not valid");
+     }
+
+     log.info("Validation is successfull for the library event : {} ", optionalLibraryEvent.get());
   }
 
 
