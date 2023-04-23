@@ -1,4 +1,4 @@
-package com.kafka.libraryeventsconsumer.intg.service;
+package com.kafka.libraryeventsconsumer.unit.service;
 
 import com.google.gson.Gson;
 import com.kafka.libraryeventsconsumer.entity.LibraryEventEntity;
@@ -28,7 +28,7 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 @SpringBootTest
 @AutoConfigureMockMvc // enable and configure auto-configuration of Mock-Mvc.
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class) // declare a custom display name generator for the annotated test class.
-public class LibraryEventsServiceIntegrationTest {
+public class LibraryEventsServiceTest {
 
   @Autowired
   private LibraryEventsRepository repository;
@@ -41,7 +41,7 @@ public class LibraryEventsServiceIntegrationTest {
     @Sql(value = "classpath:reset-data.sql", executionPhase = BEFORE_TEST_METHOD),
     @Sql(value = "classpath:user-data.sql", executionPhase = BEFORE_TEST_METHOD)
   })
-  void should_save_library_event() throws IOException {
+  void should_save_library_event_with_real_db_testcontainers() throws IOException {
     //Given
     final File jsonFile = new ClassPathResource("libraryEvent.json").getFile();
     final String libraryEventJson = Files.readString(jsonFile.toPath());
@@ -53,7 +53,6 @@ public class LibraryEventsServiceIntegrationTest {
     // 4 others are added via "user-data.sql" file in resources
     // So we have to get 5 item in DB
     repository.save(libraryEvent);
-
 
     //Then
     // Verify if we have 5 items
