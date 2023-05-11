@@ -18,6 +18,10 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.IntegerDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       group-id: library-events-listener-group
+      initialInterval: 1000
+      maxInterval: 2000
+      maxRetries: 2
+      multiplier: 2
     producer:
       bootstrap-servers:
         -   localhost:9092,localhost:9093,localhost:9094

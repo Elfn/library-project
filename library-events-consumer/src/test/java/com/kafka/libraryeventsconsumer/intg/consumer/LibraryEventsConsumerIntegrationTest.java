@@ -104,7 +104,7 @@ public class LibraryEventsConsumerIntegrationTest {
   void postNewLibraryEvent() throws ExecutionException, InterruptedException, JsonProcessingException {
 
     // Given
-    String json = "{\"libraryEventId\":null,\"libraryEventType\":\"NEW\",\"book\":{\"bookId\":123,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+    String json = "{\"libraryEventId\":999,\"libraryEventType\":\"NEW\",\"book\":{\"bookId\":123,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
     // Ici le producer depose la donnee dans le topic par defaut (library-events)
     kafkaTemplate.sendDefault(json).get();
 
@@ -118,14 +118,14 @@ public class LibraryEventsConsumerIntegrationTest {
     latch.await(3, TimeUnit.SECONDS);
 
     // Then
-    // Verifier si le consumer est appelè 1 fois lors du test
-    verify(consumerSpy, times(1)).onMessage(isA(ConsumerRecord.class));
-    // Verifier si le service est appelè 1 fois lors du test
-    verify(serviceSpy, times(1)).processLibraryEvent(isA(ConsumerRecord.class));
+    // Verifier si le consumer est appelè 2 fois lors du test
+    verify(consumerSpy, times(2)).onMessage(isA(ConsumerRecord.class));
+    // Verifier si le service est appelè 2 fois lors du test
+    verify(serviceSpy, times(2)).processLibraryEvent(isA(ConsumerRecord.class));
 
     // Faire des assertions sur le contenus de la table "LIBRARY_EVENT_ENTITY" dans la BD
    List<LibraryEventEntity> entityList = (List<LibraryEventEntity>) repository.findAll();
-   assert entityList.size() == 1;
+   assert entityList.size() == 0;
    entityList.forEach(libraryEvent -> {
      assert libraryEvent.getLibraryEventId() != null;
      assertEquals(123, libraryEvent.getBook().getBookId());
@@ -178,7 +178,7 @@ public class LibraryEventsConsumerIntegrationTest {
 
   @Test
   @Order(4)
-  void invalidUpdateLibraryEvent() throws JsonProcessingException, ExecutionException, InterruptedException {
+  void invalidUpdateWithLibraryEventIdEqualsToNull() throws JsonProcessingException, ExecutionException, InterruptedException {
 
     // Given:
 
@@ -199,11 +199,42 @@ public class LibraryEventsConsumerIntegrationTest {
 
     // Then
     // Verifier si le consumer est appelè 1 fois lors du test
-    verify(consumerSpy, times(6)).onMessage(isA(ConsumerRecord.class));
+    verify(consumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
     // Verifier si le service est appelè 1 fois lors du test
-    verify(serviceSpy, times(6)).processLibraryEvent(isA(ConsumerRecord.class));
+    verify(serviceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
 
     assert libraryEvent.getLibraryEventId() == null;
+
+  }
+
+  @Test
+  @Order(5)
+  void invalidUpdateWithLibraryEventIdEqualsTo999() throws JsonProcessingException, ExecutionException, InterruptedException {
+
+    // Given:
+
+    // Ajouter avant de modifier
+    String json = "{\"libraryEventId\":999,\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":123,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+    LibraryEventEntity libraryEvent = gson.fromJson(json, LibraryEventEntity.class);
+    kafkaTemplate.sendDefault(json).get();;
+
+
+    // When
+    // Marque un temps d'attente pour permettre
+    // au threads de s'executer tour à tour
+    CountDownLatch latch = new CountDownLatch(1);
+    // Le thead attend 3 secondes le temps que le
+    // compteur (1) du CountDownLatch soit décrémenté
+    // Jusqu'a (0)
+    latch.await(3, TimeUnit.SECONDS);
+
+    // Then
+    // Verifier si le consumer est appelè 1 fois lors du test
+    verify(consumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
+    // Verifier si le service est appelè 1 fois lors du test
+    verify(serviceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
+
+    assert libraryEvent.getLibraryEventId() == 999;
 
   }
 
@@ -240,7 +271,6 @@ public class LibraryEventsConsumerIntegrationTest {
     // Verify if we have 5 items
     assert repository.count() == total;
     log.info("Total amount of records {} ", repository.count());
-
 
 
   }
