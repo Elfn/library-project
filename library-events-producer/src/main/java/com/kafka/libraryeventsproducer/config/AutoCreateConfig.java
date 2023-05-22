@@ -39,8 +39,8 @@ public class AutoCreateConfig {
              .replicas(3)
              .build(),
           TopicBuilder.name("library-events.DLT")
-            .partitions(3)
-            .replicas(3)
+            .partitions(4)
+            .replicas(1)
             .build(),
           TopicBuilder.name("library-events.RETRY")
             .partitions(3)
