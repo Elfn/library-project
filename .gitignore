@@ -1,1 +1,2 @@
-docker-compose/start-kafka-and-create-topics.sh
+library-project/docker-compose
+/start-kafka-and-create-topics.sh
