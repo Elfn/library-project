@@ -1,6 +1,8 @@
 package com.kafka.libraryeventsconsumer.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
@@ -8,7 +10,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.backoff.FixedBackOff;
@@ -27,12 +32,38 @@ public class LibraryEventsConsumerConfig {
   @Autowired
   private KafkaConsumerProperties properties;
 
+  @Autowired
+  private KafkaTemplate template;
+
+
+
+
+  public DeadLetterPublishingRecoverer publishingRecoverer(){
+
+    DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+      (r, e) -> {
+        if (e.getCause() instanceof RecoverableDataAccessException) {
+          return new TopicPartition(properties.getLibraryEventsRetry(), r.partition());
+        }
+        else {
+          return new TopicPartition(properties.getLibraryEventsDLT(), r.partition());
+        }
+      });
+    //CommonErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 2L));
+    return recoverer;
+
+  }
+
+
   public DefaultErrorHandler errorHandler(){
     // Retry consumming operation twice(2) with a delay of 1s
     var fixedBackOff = new FixedBackOff(1000L, 2);
 
-   // var exceptionsToIgnore = List.of(IllegalArgumentException.class);
-    var exceptionsToRetry = List.of(RecoverableDataAccessException.class);
+    // Retry process is not applied when we meet that exception
+     var exceptionsToIgnore = List.of(IllegalArgumentException.class);
+
+    // Retry process is applied when we meet that exception
+    //var exceptionsToRetry = List.of(RecoverableDataAccessException.class);
 
 
     // Retry failed Records with ExponentialBackOff
@@ -44,12 +75,13 @@ public class LibraryEventsConsumerConfig {
 
     var errorHandler = new DefaultErrorHandler(
       //fixedBackOff
+      publishingRecoverer(),
       exponentialBackOff
     );
 
     // To retry or not only specific exceptions using retryPolicy
-    // exceptionsToIgnore.forEach(errorHandler::addNotRetryableExceptions);
-    exceptionsToRetry.forEach(errorHandler::addRetryableExceptions);
+     exceptionsToIgnore.forEach(errorHandler::addNotRetryableExceptions);
+    // exceptionsToRetry.forEach(errorHandler::addRetryableExceptions);
 
     // To monitor each retry
     errorHandler.setRetryListeners(((record, ex, deliveryAttempt) -> {

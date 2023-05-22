@@ -3,6 +3,9 @@ spring:
     active: local
 server:
   port: 8081
+topics:
+  retry: library-events.RETRY
+  dlt: library-events.DLT
 
 ---
 
@@ -20,7 +23,7 @@ spring:
       group-id: library-events-listener-group
       initialInterval: 1000
       maxInterval: 2000
-      maxRetries: 2
+      maxRetries: 8
       multiplier: 2
     producer:
       bootstrap-servers:
@@ -39,9 +42,6 @@ spring:
   h2:
     console:
       enabled: true
-cluster:
-  topics:
-    library-events: library-events
 
 ---
 

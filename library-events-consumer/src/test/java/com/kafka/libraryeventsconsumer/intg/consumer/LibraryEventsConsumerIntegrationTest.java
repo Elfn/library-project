@@ -3,6 +3,7 @@ package com.kafka.libraryeventsconsumer.intg.consumer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import com.kafka.libraryeventsconsumer.config.KafkaConsumerProperties;
 import com.kafka.libraryeventsconsumer.consumer.LibraryEventsConsumer;
 import com.kafka.libraryeventsconsumer.entity.BookEntity;
 import com.kafka.libraryeventsconsumer.entity.LibraryEventEntity;
@@ -10,7 +11,10 @@ import com.kafka.libraryeventsconsumer.entity.LibraryEventTypeEntity;
 import com.kafka.libraryeventsconsumer.jpa.LibraryEventsRepository;
 import com.kafka.libraryeventsconsumer.service.LibraryEventsService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,11 +22,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlGroup;
@@ -30,10 +36,14 @@ import org.springframework.test.context.jdbc.SqlGroup;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.isA;
@@ -48,10 +58,10 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 @Slf4j
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@EmbeddedKafka(topics = {"library-events"}, partitions = 3)
+@EmbeddedKafka(topics = {"library-events","library-events.RETRY","library-events.DLT"}, partitions = 3)
 @AutoConfigureMockMvc // enable and configure auto-configuration of Mock-Mvc.
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class) // declare a custom display name generator for the annotated test class.
-@TestPropertySource(properties = {"spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}","spring.kafka.consumer.bootstrap-servers=${spring.embedded.kafka.brokers}"})
+@TestPropertySource(properties = {"spring.kafka.producer.bootstrap-servers=${spring.embedded.kafka.brokers}","spring.kafka.consumer.bootstrap-servers=${spring.embedded.kafka.brokers}"/*,"retryListener.startup=false"*/})
 public class LibraryEventsConsumerIntegrationTest {
 
   @Autowired
@@ -62,6 +72,11 @@ public class LibraryEventsConsumerIntegrationTest {
   private LibraryEventsRepository repository;
   @Autowired
   private ObjectMapper objectMapper;
+
+  @Autowired
+  private KafkaConsumerProperties properties;
+
+  private Consumer<Integer,String> consumer;
 
   @Autowired
   private Gson gson;
@@ -78,25 +93,38 @@ public class LibraryEventsConsumerIntegrationTest {
   @SpyBean
   LibraryEventsService serviceSpy;
 
+  @Autowired
+  EmbeddedKafkaBroker embeddedKafkaBroker;
+
 
 
   @BeforeEach
   void setUp() {
 
-    // MessageListenerContainer est un composant clé dans les applications Kafka qui permet aux
-    // consommateurs de lire des messages à partir des topics Kafka
-    for (MessageListenerContainer messageListenerContainer : endpointRegistry.getListenerContainers()){
+    // Ayant maintenant 2 topics cette methode Permet de ne consumer que les partitions du topic "library-events" lors du test
+    var container = endpointRegistry.getListenerContainers().stream()
+      .filter(messageListenerContainer -> Objects.equals(messageListenerContainer.getGroupId(),"library-events-listener-group"))
+      .collect(Collectors.toList()).get(0);
+    ContainerTestUtils.waitForAssignment(container, kafkaBroker.getPartitionsPerTopic());
 
-      // permet d'attendre que tous les partitions d'un topic Kafka soient affectées
-      // à des consommateurs avant de poursuivre les tests
-      ContainerTestUtils.waitForAssignment(messageListenerContainer, kafkaBroker.getPartitionsPerTopic());
-    }
+ // ----------------------------------------------------------------------------------------------------------
+//    // MessageListenerContainer est un composant clé dans les applications Kafka qui permet aux
+//    // consommateurs de lire des messages à partir des topics Kafka
+  //  for (MessageListenerContainer messageListenerContainer : endpointRegistry.getListenerContainers()){
+
+//      // permet d'attendre que toutes les partitions d'un topic Kafka soient affectées
+//      // à des consommateurs avant de poursuivre les tests
+  //    ContainerTestUtils.waitForAssignment(messageListenerContainer, kafkaBroker.getPartitionsPerTopic());
+   // }
+// ----------------------------------------------------------------------------------------------------------
+
   }
 
   @AfterEach
   void tearDown() {
     // Supprimer les données préexistantes avant de relancer les tests
     repository.deleteAll();
+    consumer.close();
   }
 
   @Test
@@ -178,7 +206,7 @@ public class LibraryEventsConsumerIntegrationTest {
 
   @Test
   @Order(4)
-  void invalidUpdateWithLibraryEventIdEqualsToNull() throws JsonProcessingException, ExecutionException, InterruptedException {
+  void invalidUpdateWithLibraryEventIdEqualsToNull() throws IOException, ExecutionException, InterruptedException {
 
     // Given:
 
@@ -199,17 +227,27 @@ public class LibraryEventsConsumerIntegrationTest {
 
     // Then
     // Verifier si le consumer est appelè 1 fois lors du test
-    verify(consumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
+    verify(consumerSpy, times(1)).onMessage(isA(ConsumerRecord.class));
     // Verifier si le service est appelè 1 fois lors du test
-    verify(serviceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
+    verify(serviceSpy, times(1)).processLibraryEvent(isA(ConsumerRecord.class));
 
     assert libraryEvent.getLibraryEventId() == null;
+
+    Map<String,Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("group2", "true", embeddedKafkaBroker));
+    consumer = new DefaultKafkaConsumerFactory<>(configs, new IntegerDeserializer(), new StringDeserializer()).createConsumer();
+    embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, properties.getLibraryEventsDLT());
+
+    ConsumerRecord<Integer,String> consumerRecord = KafkaTestUtils.getSingleRecord(consumer, properties.getLibraryEventsDLT());
+    // Thread.sleep(5); // Wait for getSingleRecord method
+    String value = consumerRecord.value();
+    assertEquals(json,value);
+    log.info("Record successfully get: {}, from: {}", consumerRecord.value(), consumerRecord.topic());
 
   }
 
   @Test
   @Order(5)
-  void invalidUpdateWithLibraryEventIdEqualsTo999() throws JsonProcessingException, ExecutionException, InterruptedException {
+  void invalidUpdateWithLibraryEventIdEqualsTo999() throws IOException, ExecutionException, InterruptedException {
 
     // Given:
 
@@ -230,12 +268,23 @@ public class LibraryEventsConsumerIntegrationTest {
 
     // Then
     // Verifier si le consumer est appelè 1 fois lors du test
-    verify(consumerSpy, times(3)).onMessage(isA(ConsumerRecord.class));
+    verify(consumerSpy, times(2)).onMessage(isA(ConsumerRecord.class));
     // Verifier si le service est appelè 1 fois lors du test
-    verify(serviceSpy, times(3)).processLibraryEvent(isA(ConsumerRecord.class));
+    verify(serviceSpy, times(2)).processLibraryEvent(isA(ConsumerRecord.class));
 
     assert libraryEvent.getLibraryEventId() == 999;
 
+    Map<String,Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("group1", "true", embeddedKafkaBroker));
+    consumer = new DefaultKafkaConsumerFactory<>(configs, new IntegerDeserializer(), new StringDeserializer()).createConsumer();
+    embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, properties.getLibraryEventsRetry());
+
+    ConsumerRecord<Integer,String> consumerRecord = KafkaTestUtils.getSingleRecord(consumer, properties.getLibraryEventsRetry());
+    // Thread.sleep(5); // Wait for getSingleRecord method
+    final File jsonFile = new ClassPathResource("libraryEvent.json").getFile();
+    final String expectedRecord = Files.readString(jsonFile.toPath()).trim();
+    String value = consumerRecord.value();
+    assertEquals(expectedRecord,value);
+    log.info("Record successfully get: {}, from: {}", consumerRecord.value(), consumerRecord.topic());
   }
 
   @Test

@@ -14,7 +14,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 @Data
 @Configuration
 @EnableKafka
-@Profile("local")
+//@Profile("local")
 // @ConfigurationProperties(prefix = "spring.kafka.consumer")
 public class KafkaConsumerProperties {
   @Value("${spring.kafka.consumer.group-id}")
@@ -31,4 +31,10 @@ public class KafkaConsumerProperties {
 
   @Value("${spring.kafka.consumer.multiplier}")
   private double multiplier;
+
+  @Value("${topics.retry}")
+  private String libraryEventsRetry;
+
+  @Value("${topics.dlt}")
+  private String libraryEventsDLT;
 }

@@ -19,15 +19,34 @@ import java.util.List;
 @Profile("local")
 public class AutoCreateConfig {
 
+//  @Bean
+//  public NewTopic libraryEvents(){
+//
+//    return TopicBuilder.name("library-events")
+//        .partitions(3)
+//        .replicas(3)
+//        .build();
+//
+//  }
 
 
   @Bean
-  public NewTopic libraryEvents(){
+  public List<NewTopic> libraryEvents(){
 
-    return TopicBuilder.name("library-events")
-                       .partitions(3)
-                       .replicas(3)
-                       .build();
+    return List.of(
+           TopicBuilder.name("library-events")
+             .partitions(3)
+             .replicas(3)
+             .build(),
+          TopicBuilder.name("library-events.DLT")
+            .partitions(3)
+            .replicas(3)
+            .build(),
+          TopicBuilder.name("library-events.RETRY")
+            .partitions(3)
+            .replicas(3)
+            .build()
+      );
 
   }
 
