@@ -8,6 +8,7 @@ import com.kafka.libraryeventsconsumer.jpa.LibraryEventsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -22,50 +23,51 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class LibraryEventsServiceImpl implements LibraryEventsService{
 
- private final ObjectMapper objectMapper;
- private final LibraryEventsRepository repository;
+  @Autowired
+  ObjectMapper objectMapper;
 
-  @Override
-  public void processLibraryEvent(ConsumerRecord<Integer, String> consumerRecord) throws JsonProcessingException {
-    LibraryEventEntity libraryEvent =  objectMapper.readValue(consumerRecord.value(), LibraryEventEntity.class);
-    log.info("LibraryEvent : {}", libraryEvent);
+  @Autowired
+  private LibraryEventsRepository libraryEventsRepository;
 
-    if(libraryEvent != null && (libraryEvent.getLibraryEventId() != null && libraryEvent.getLibraryEventId() == 999)){
-      throw new RecoverableDataAccessException("Temporary network issue");
+  public void processLibraryEvent(ConsumerRecord<Integer,String> consumerRecord) throws JsonProcessingException {
+    LibraryEventEntity libraryEvent = objectMapper.readValue(consumerRecord.value(), LibraryEventEntity.class);
+    log.info("libraryEvent : {} ", libraryEvent);
+
+    if(libraryEvent!=null && (libraryEvent.getLibraryEventId()!=null &&  libraryEvent.getLibraryEventId() == 999)){
+      throw new RecoverableDataAccessException("Temporary Network Issue");
     }
 
     switch(libraryEvent.getLibraryEventType()){
       case NEW:
-        // Save operation
         save(libraryEvent);
         break;
       case UPDATE:
-        // Update operation
+        //validate the libraryevent
         validate(libraryEvent);
         save(libraryEvent);
         break;
       default:
-        log.error("Invalid Library Event Type");
+        log.info("Invalid Library Event Type");
     }
+
+  }
+
+  private void validate(LibraryEventEntity libraryEvent) {
+    if(libraryEvent.getLibraryEventId()==null){
+      throw new IllegalArgumentException("Library Event Id is missing");
+    }
+
+    Optional<LibraryEventEntity> libraryEventOptional = libraryEventsRepository.findById(libraryEvent.getLibraryEventId());
+    if(!libraryEventOptional.isPresent()){
+      throw new IllegalArgumentException("Not a valid library Event");
+    }
+    log.info("Validation is successful for the library Event : {} ", libraryEventOptional.get());
   }
 
   private void save(LibraryEventEntity libraryEvent) {
     libraryEvent.getBook().setLibraryEvent(libraryEvent);
-    repository.save(libraryEvent);
-    log.info("Successfully persisted the libraryEvent (Id:{}, Type:{})", libraryEvent.getLibraryEventId(), libraryEvent.getLibraryEventType());
+    libraryEventsRepository.save(libraryEvent);
+    log.info("Successfully Persisted the libary Event {} ", libraryEvent);
   }
-
-  private void validate(LibraryEventEntity libraryEvent) {
-     if(libraryEvent.getLibraryEventId() == null){
-       throw new IllegalArgumentException("Library event Id is missing");
-     }
-     Optional<LibraryEventEntity> optionalLibraryEvent =  repository.findById(libraryEvent.getLibraryEventId());
-     if(!optionalLibraryEvent.isPresent()){
-       throw new IllegalArgumentException("Library event not valid");
-     }
-
-     log.info("Validation is successfull for the library event : {} ", optionalLibraryEvent.get());
-  }
-
 
 }

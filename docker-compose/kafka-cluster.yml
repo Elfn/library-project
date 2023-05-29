@@ -35,6 +35,12 @@ services:
       SCHEMA_REGISTRY_DEBUG: 'true'
     networks:  
       - ${GLOBAL_NETWORK:-kafka}
+  # kafka_init:
+  #   build: .
+  #   depends_on:
+  #     - kafka-broker-1
+  #     - kafka-broker-2
+  #     - kafka-broker-3
   kafka-broker-1:
     image: confluentinc/cp-kafka:${KAFKA_VERSION}
     hostname: kafka-broker-1
