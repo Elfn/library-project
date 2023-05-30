@@ -3,7 +3,6 @@ package com.kafka.libraryeventsconsumer.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kafka.libraryeventsconsumer.entity.LibraryEventEntity;
-import com.kafka.libraryeventsconsumer.entity.LibraryEventTypeEntity;
 import com.kafka.libraryeventsconsumer.jpa.LibraryEventsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
