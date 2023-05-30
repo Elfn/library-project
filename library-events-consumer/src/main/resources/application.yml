@@ -23,7 +23,7 @@ spring:
       group-id: library-events-listener-group
       initialInterval: 1000
       maxInterval: 2000
-      maxRetries: 8
+      maxRetries: 1
       multiplier: 2
     producer:
       bootstrap-servers:

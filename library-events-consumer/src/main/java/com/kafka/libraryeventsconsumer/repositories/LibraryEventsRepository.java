@@ -1,4 +1,4 @@
-package com.kafka.libraryeventsconsumer.jpa;
+package com.kafka.libraryeventsconsumer.repositories;
 
 import com.kafka.libraryeventsconsumer.entity.LibraryEventEntity;
 import org.springframework.data.repository.CrudRepository;

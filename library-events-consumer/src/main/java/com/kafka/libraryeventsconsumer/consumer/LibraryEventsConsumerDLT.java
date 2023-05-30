@@ -19,9 +19,9 @@ public class LibraryEventsConsumerDLT {
 
   private final LibraryEventsService service;
 
-  @KafkaListener(topics = {"library-events.DLT"}, autoStartup = "${retryListener.startup:false}", groupId = "library-events-listener-group")
+  @KafkaListener(topics = "library-events.DLT", groupId = "dlt-listener-group")
   public void onMessage(ConsumerRecord<Integer,String> consumerRecord) throws JsonProcessingException {
-     log.info("ConsumerRecord : {}", consumerRecord);
+    // log.info("ConsumerRecord : {}", consumerRecord);
      service.processLibraryEvent(consumerRecord);
   }
 

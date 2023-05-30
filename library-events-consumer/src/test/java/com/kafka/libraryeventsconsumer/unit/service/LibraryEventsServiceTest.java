@@ -2,7 +2,7 @@ package com.kafka.libraryeventsconsumer.unit.service;
 
 import com.google.gson.Gson;
 import com.kafka.libraryeventsconsumer.entity.LibraryEventEntity;
-import com.kafka.libraryeventsconsumer.jpa.LibraryEventsRepository;
+import com.kafka.libraryeventsconsumer.repositories.LibraryEventsRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;

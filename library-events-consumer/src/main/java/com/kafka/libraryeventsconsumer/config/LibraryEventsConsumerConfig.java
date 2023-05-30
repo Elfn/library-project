@@ -1,7 +1,10 @@
 package com.kafka.libraryeventsconsumer.config;
 
+import com.kafka.libraryeventsconsumer.entity.FailureRecord;
+import com.kafka.libraryeventsconsumer.service.LibraryEventsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,11 +18,13 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.backoff.FixedBackOff;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -31,11 +36,15 @@ import java.util.List;
 @EnableKafka
 public class LibraryEventsConsumerConfig {
 
+
   @Autowired
   private KafkaConsumerProperties properties;
 
   @Autowired
   private KafkaTemplate template;
+
+  @Autowired
+  private LibraryEventsService service;
 
 
 
@@ -60,9 +69,34 @@ public class LibraryEventsConsumerConfig {
 
   }
 
-  @KafkaListener(topics = "library-events.DLT", groupId = "groupe_id")
-  public void lireMessage(String message) {
-    System.out.println("Message reçu : " + message);
+
+  ConsumerRecordRecoverer consumerRecordRecoverer = (cr, e) -> {
+    log.error("Exception in ConsumerRecordRecoverer: {} ", e.getMessage(), e);
+    FailureRecord failureRecord = (e.getCause() instanceof RecoverableDataAccessException) ? recovery(cr,e,RecoverySignals.RETRY) : recovery(cr,e,RecoverySignals.DEAD);
+    String msg = (failureRecord.getStatus() == "RETRY") ? msgOutput(RecoverySignals.RETRY) : (failureRecord.getStatus() == "DEAD") ? msgOutput(RecoverySignals.DEAD) : null;
+
+    if(failureRecord.equals(null) || msg == null){
+      log.info("Record not found: {}", e.getMessage());
+    }
+
+    log.info(msg);
+    log.info("Data saved in Database: {}", failureRecord);
+  };
+
+  private FailureRecord recovery(ConsumerRecord consumerRecord, Exception exception, String status) {
+   return switch (status) {
+      case "RETRY" -> service.saveFailedRecord(consumerRecord,exception, RecoverySignals.RETRY); // Recovery logic
+      case "DEAD" -> service.saveFailedRecord(consumerRecord,exception, RecoverySignals.DEAD); // Non recovery logic
+      default ->  null;
+    };
+  }
+
+  private String msgOutput(String status) {
+    return switch (status) {
+      case "RETRY" -> "Inside recovery";
+      case "DEAD" -> "Inside non recovery";
+      default ->  null;
+    };
   }
 
 
@@ -86,7 +120,8 @@ public class LibraryEventsConsumerConfig {
 
     var errorHandler = new DefaultErrorHandler(
       //fixedBackOff
-      publishingRecoverer(),
+     // publishingRecoverer(),
+      consumerRecordRecoverer,
       exponentialBackOff
     );
 
