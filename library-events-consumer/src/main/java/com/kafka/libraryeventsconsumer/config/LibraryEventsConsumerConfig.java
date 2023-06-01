@@ -100,6 +100,7 @@ public class LibraryEventsConsumerConfig {
   }
 
 
+
   public DefaultErrorHandler errorHandler(){
     // Retry consumming operation twice(2) with a delay of 1s
     var fixedBackOff = new FixedBackOff(1000L, 2);

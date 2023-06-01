@@ -61,7 +61,7 @@ public class LibraryEventsServiceImpl implements LibraryEventsService{
     if(consumerRecord.equals(null)){
       log.error("Problem with that data: {} ", new Exception().getMessage(), consumerRecord);
     }
-    FailureRecord failureRecord = new FailureRecord(Integer.valueOf(UUID.randomUUID().toString()), consumerRecord.topic(),consumerRecord.key(),consumerRecord.value(), consumerRecord.partition(), consumerRecord.offset(), e.getMessage(), status);
+    FailureRecord failureRecord = new FailureRecord(null, consumerRecord.topic(),consumerRecord.key(),consumerRecord.value(), consumerRecord.partition(), consumerRecord.offset(), e.getCause().getMessage(), status);
     return failureRecordRepository.save(failureRecord);
   }
 

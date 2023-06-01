@@ -4,10 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.kafka.libraryeventsconsumer.config.KafkaConsumerProperties;
+import com.kafka.libraryeventsconsumer.config.RecoverySignals;
 import com.kafka.libraryeventsconsumer.consumer.LibraryEventsConsumer;
 import com.kafka.libraryeventsconsumer.entity.BookEntity;
 import com.kafka.libraryeventsconsumer.entity.LibraryEventEntity;
 import com.kafka.libraryeventsconsumer.entity.LibraryEventTypeEntity;
+import com.kafka.libraryeventsconsumer.repositories.FailureRecordRepository;
 import com.kafka.libraryeventsconsumer.repositories.LibraryEventsRepository;
 import com.kafka.libraryeventsconsumer.service.LibraryEventsService;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +70,9 @@ public class LibraryEventsConsumerIntegrationTest {
   @Autowired
   private  KafkaTemplate<Integer, String> kafkaTemplate;
   @Autowired
-  private LibraryEventsRepository repository;
+  private LibraryEventsRepository libraryEventsRepository;
+  @Autowired
+  private FailureRecordRepository failureRecordRepository;
   @Autowired
   private ObjectMapper objectMapper;
 
@@ -122,8 +126,8 @@ public class LibraryEventsConsumerIntegrationTest {
   @AfterEach
   void tearDown() {
     // Supprimer les données préexistantes avant de relancer les tests
-    repository.deleteAll();
-    consumer.close();
+    libraryEventsRepository.deleteAll();
+   // consumer.close();
   }
 
   @Test
@@ -151,7 +155,7 @@ public class LibraryEventsConsumerIntegrationTest {
     verify(serviceSpy, times(2)).processLibraryEvent(isA(ConsumerRecord.class));
 
     // Faire des assertions sur le contenus de la table "LIBRARY_EVENT_ENTITY" dans la BD
-   List<LibraryEventEntity> entityList = (List<LibraryEventEntity>) repository.findAll();
+   List<LibraryEventEntity> entityList = (List<LibraryEventEntity>) libraryEventsRepository.findAll();
    assert entityList.size() == 0;
    entityList.forEach(libraryEvent -> {
      assert libraryEvent.getLibraryEventId() != null;
@@ -170,7 +174,7 @@ public class LibraryEventsConsumerIntegrationTest {
     String json = "{\"libraryEventId\":null,\"libraryEventType\":\"NEW\",\"book\":{\"bookId\":123,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
     LibraryEventEntity libraryEvent = objectMapper.readValue(json, LibraryEventEntity.class);
     libraryEvent.getBook().setLibraryEvent(libraryEvent);
-    repository.save(libraryEvent);
+    libraryEventsRepository.save(libraryEvent);
 
     // Modifier apres ajout
     BookEntity updatedBook = BookEntity.builder().bookId(123).bookName("Kafka Using Spring Boot 3.x").bookAuthor("Dilip").build();
@@ -196,7 +200,7 @@ public class LibraryEventsConsumerIntegrationTest {
     // Verifier si le service est appelè 1 fois lors du test
     verify(serviceSpy, times(1)).processLibraryEvent(isA(ConsumerRecord.class));
 
-    LibraryEventEntity persistedLibraryEvent = repository.findById(libraryEvent.getLibraryEventId()).get();
+    LibraryEventEntity persistedLibraryEvent = libraryEventsRepository.findById(libraryEvent.getLibraryEventId()).get();
     assertEquals("Kafka Using Spring Boot 3.x", persistedLibraryEvent.getBook().getBookName());
 
 
@@ -317,9 +321,75 @@ public class LibraryEventsConsumerIntegrationTest {
     verify(serviceSpy, times(5)).processLibraryEvent(isA(ConsumerRecord.class));
 
     // Verify if we have 5 items
-    assert repository.count() == total;
-    log.info("Total amount of records {} ", repository.count());
+    assert libraryEventsRepository.count() == total;
+    log.info("Total amount of records {} ", libraryEventsRepository.count());
 
+
+  }
+
+  @Test
+  @Order(6)
+  void invalidUpdateWithLibraryEventEqualsToNullForFailureRecord() throws JsonProcessingException, InterruptedException, ExecutionException {
+
+    // Given:
+    // Ajouter avant de modifier
+    String json = "{\"libraryEventId\":null,\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":456,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+    kafkaTemplate.sendDefault(json).get();;
+
+
+    // When
+    // Marque un temps d'attente pour permettre
+    // au threads de s'executer tour à tour
+    CountDownLatch latch = new CountDownLatch(1);
+    // Le thead attend 3 secondes le temps que le
+    // compteur (1) du CountDownLatch soit décrémenté
+    // Jusqu'a (0)
+    latch.await(5, TimeUnit.SECONDS);
+
+    // Then
+    // Verifier si le consumer est appelè 1 fois lors du test
+    verify(consumerSpy, times(1)).onMessage(isA(ConsumerRecord.class));
+    // Verifier si le service est appelè 1 fois lors du test
+    verify(serviceSpy, times(1)).processLibraryEvent(isA(ConsumerRecord.class));
+
+    // Check if there is 1 failed record into the DB
+    assert failureRecordRepository.count() == 1;
+    failureRecordRepository.findAll().forEach(failureRecord -> {
+      System.out.println("failureRecord : " + failureRecord);
+    });
+
+  }
+
+  @Test
+  @Order(7)
+  void invalidUpdateWithLibraryEventIDEqualsTo999ForFailureRecord() throws JsonProcessingException, InterruptedException, ExecutionException {
+
+    // Given:
+    // Ajouter avant de modifier
+    String json = "{\"libraryEventId\":999,\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":456,\"bookName\":\"Kafka Using Spring Boot\",\"bookAuthor\":\"Dilip\"}}";
+    kafkaTemplate.sendDefault(json).get();;
+
+    // When
+    // Marque un temps d'attente pour permettre
+    // au threads de s'executer tour à tour
+    CountDownLatch latch = new CountDownLatch(1);
+    // Le thead attend 3 secondes le temps que le
+    // compteur (1) du CountDownLatch soit décrémenté
+    // Jusqu'a (0)
+    latch.await(5, TimeUnit.SECONDS);
+
+    // Then
+    // Verifier si le consumer est appelè 1 fois lors du test
+    verify(consumerSpy, times(2)).onMessage(isA(ConsumerRecord.class));
+    // Verifier si le service est appelè 1 fois lors du test
+    verify(serviceSpy, times(2)).processLibraryEvent(isA(ConsumerRecord.class));
+
+    // Check if there is 1 failed record into the DB
+    assert failureRecordRepository.count() == 1;
+    assert failureRecordRepository.findByStatus(RecoverySignals.SUCCESS).getStatus() == "SUCCESS";
+    failureRecordRepository.findAllByStatus(RecoverySignals.SUCCESS).forEach(failureRecord -> {
+      System.out.println("failureRecord : " + failureRecord);
+    });
 
   }
 

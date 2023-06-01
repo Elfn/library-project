@@ -7,4 +7,5 @@ package com.kafka.libraryeventsconsumer.config;
 public interface RecoverySignals {
     String RETRY = "RETRY";
     String DEAD = "DEAD";
+    String SUCCESS = "SUCCESS";
 }
