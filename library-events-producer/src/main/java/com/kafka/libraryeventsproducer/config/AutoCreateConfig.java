@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.ConsumerFactory;
 
 import java.util.List;
 
@@ -19,6 +21,7 @@ import java.util.List;
 @Profile("local")
 public class AutoCreateConfig {
 
+
 //  @Bean
 //  public NewTopic libraryEvents(){
 //
@@ -28,7 +31,6 @@ public class AutoCreateConfig {
 //        .build();
 //
 //  }
-
 
   @Bean
   public List<NewTopic> libraryEvents(){
@@ -43,6 +45,10 @@ public class AutoCreateConfig {
             .replicas(1)
             .build(),
           TopicBuilder.name("library-events.RETRY")
+            .partitions(3)
+            .replicas(3)
+            .build(),
+          TopicBuilder.name("test-topic")
             .partitions(3)
             .replicas(3)
             .build()
