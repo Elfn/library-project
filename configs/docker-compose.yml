@@ -2,7 +2,7 @@
 version: '2'
 services:
   zoo1:
-    image: confluentinc/cp-zookeeper:7.3.2
+    image: confluentinc/cp-zookeeper:7.4.0
     hostname: zoo1
     ports:
       - "2181:2181"
@@ -13,7 +13,7 @@ services:
       ZOOKEEPER_SERVERS: zoo1:2888:3888
 
   kafka-broker-1:
-    image: confluentinc/cp-kafka:7.3.2
+    image: confluentinc/cp-kafka:7.4.0
     hostname: kafka-broker-1
     container_name: kafka-broker-1
     ports:
@@ -40,7 +40,7 @@ services:
       - ./secrets:/etc/kafka/secrets
       - ./properties:/etc/kafka/properties  
   kafka-broker-2:
-    image: confluentinc/cp-kafka:7.3.2
+    image: confluentinc/cp-kafka:7.4.0
     hostname: kafka-broker-2
     container_name: kafka-broker-2
     ports:
@@ -67,7 +67,7 @@ services:
       - ./secrets:/etc/kafka/secrets
       - ./properties:/etc/kafka/properties  
   kafka-broker-3:
-    image: confluentinc/cp-kafka:7.3.2
+    image: confluentinc/cp-kafka:7.4.0
     hostname: kafka-broker-3
     container_name: kafka-broker-3
     ports:

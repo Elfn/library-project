@@ -1,0 +1,12 @@
+# Its the common network driver type
+# when we run compose file we include
+# that file which is setting network
+# type as bridge
+# Bridge allows all container in the bridge network to communicate
+# preventing other containers to reach the network
+# As we defined it as "bridge" containers can be resolved using hostname
+version: '3.7'
+
+networks:
+  application:
+    driver: bridge
